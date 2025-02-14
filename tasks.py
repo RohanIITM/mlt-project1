@@ -78,10 +78,22 @@ def eval_task(task_description: str) -> None:
     eval(task, globals=globals())
 
 
-def extract_email(email_content: str) -> str: ...
+def extract_email(email_content: str) -> str | None:
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {
+                "role": "system",
+                "content": "Find emails from this message and return only emails."
+            },
+            {"role": "user", "content": email_content},
+        ],
+    )
+
+    return response.choices[0].message.content
 
 
-def extract_credit_card(image_path: str) -> str:
+def extract_credit_card(image_path: str) -> str | None:
     with open(image_path, "rb") as image_file:
         image_bytes = image_file.read()
 
@@ -108,9 +120,7 @@ def extract_credit_card(image_path: str) -> str:
         ],
     )
 
-    extracted_text = response.choices[0].message.content.strip()
-
-    return extracted_text
+    return response.choices[0].message.content
 
 
 def find_most_similar(comments: str) -> str | None:
@@ -271,8 +281,8 @@ def task_a10(ticket_db_in_path: str, ticket_out_path: str) -> None:
 
 
 def main() -> None:
-    eval_task("Delete /data")
-    print(extract_credit_card("./data/credit_card.png"))
+    # eval_task("Delete /data")
+    print(extract_email(Path("./data/email.txt").read_text()))
 
 
 if __name__ == "__main__":
