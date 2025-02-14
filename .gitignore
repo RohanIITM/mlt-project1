@@ -1,0 +1,7 @@
+__pycache__/
+data/
+datagen.py
+
+.env
+.venv/
+
