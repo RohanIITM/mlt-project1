@@ -2,7 +2,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 
-from .tasks import eval_task
+from tasks import eval_task
 
 app = FastAPI()
 
