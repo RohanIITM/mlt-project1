@@ -6,9 +6,14 @@ import sqlite3
 import subprocess
 from pathlib import Path
 from typing import Callable
+from urllib.request import urlretrieve
+import logging
+
 
 import dateparser
 from openai import OpenAI
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 DATAGEN_URL = "https://raw.githubusercontent.com/sanand0/tools-in-data-science-public/tds-2025-01/project-1/datagen.py"
 
@@ -66,14 +71,15 @@ def eval_task(task_description: str) -> None:
                 "content": task_source
                 + "\n\nBased on the given tasks, call any of the functions (with arguments) for the given description: "
                 + task_description
-                + "\nOnly give me the function call and nothing else.",
+                + "\nOnly give me the function call code and nothing else, dont markdown format it as well.",
             },
         ],
     )
 
     task = response.choices[0].message.content
+    logging.info(f'Task identified: {task!r}')
     if task is None or not task.startswith("task_"):
-        return None
+        raise ValueError(f"Invalid task {task}")
 
     eval(task, globals=globals())
 
@@ -84,7 +90,7 @@ def extract_email(email_content: str) -> str | None:
         messages=[
             {
                 "role": "system",
-                "content": "Find emails from this message and return only emails."
+                "content": "Find emails from this message and return only emails.",
             },
             {"role": "user", "content": email_content},
         ],
@@ -146,15 +152,7 @@ def task_a1(user_email: str) -> None:
     files required for the next tasks.)
     """
 
-    subprocess.run(("pip", "install", "uv"), check=True)
-
-    # Create and activate virtual environment
-    # This is so that uv can automatically install the dependencies
-    subprocess.run(("uv", "venv", ".venv"), check=True)
-    subprocess.run(("source", ".venv/bin/activate"), check=True)
-
-    subprocess.run(("curl", "-O", DATAGEN_URL), check=True)
-
+    urlretrieve(DATAGEN_URL, "datagen.py")
     subprocess.run(("uv", "run", "datagen.py", user_email), check=True)
 
 
@@ -168,7 +166,7 @@ def task_a2(path: str | None = None, prettier_v: str | None = None) -> None:
     if prettier_v is None:
         prettier_v = "3.4.2"
 
-    subprocess.run(("npx", f"prettier@{prettier_v}", "--write", path))
+    subprocess.run(("npx", "-y", f"prettier@{prettier_v}", "--write", path), check=True)
 
 
 def task_a3(weekday: int, dates_in_path: str, dates_out_path) -> None:
@@ -236,6 +234,8 @@ def task_a7(email_in_path: str, email_out_path: str) -> None:
         email_content = file.read()
 
     sender_email = extract_email(email_content)
+    if sender_email is None:
+        raise ValueError("No email found")
 
     with open(email_out_path, "w") as file:
         file.write(sender_email)
@@ -245,6 +245,8 @@ def task_a8() -> None:
     """A8. Extract the credit card number from /data/credit-card.png and write it to /data/credit-card.txt"""
 
     card_number = extract_credit_card("/data/credit-card.png")
+    if card_number is None:
+        raise ValueError("No credit card number found")
 
     with open("/data/credit-card.txt", "w") as file:
         file.write(card_number.replace(" ", ""))
@@ -281,8 +283,17 @@ def task_a10(ticket_db_in_path: str, ticket_out_path: str) -> None:
 
 
 def main() -> None:
-    # eval_task("Delete /data")
-    print(extract_email(Path("./data/email.txt").read_text()))
+    # Test cases for each task using natural language descriptions
+    eval_task("Generate data files using my email user@example.com.")
+    eval_task("Format the contents of /data/format.md using Prettier.")
+    eval_task("Count the number of Wednesdays in the file /data/dates.txt and save the result to /data/dates-wednesdays.txt.")
+    eval_task("Sort contacts in /data/contacts.json by last name and first name and save the sorted version to /data/contacts-sorted.json.")
+    eval_task("Extract the first line from the 10 most recent log files in /data/logs and save to /data/logs-recent.txt.")
+    eval_task("Find all Markdown files in /data/docs, extract the first H1 from each, and create an index mapping filenames to titles in /data/docs-index.json.")
+    eval_task("Extract the sender's email from /data/email.txt and save it to /data/email-sender.txt.")
+    eval_task("Extract the credit card number from /data/credit-card.png and save it to /data/credit-card.txt.")
+    eval_task("Find the most similar pair of comments in /data/comments.txt and save them to /data/comments-similar.txt.")
+    eval_task("Calculate total sales for 'Gold' tickets from /data/ticket-sales.db and save to /data/ticket-sales-gold.txt.")
 
 
 if __name__ == "__main__":
